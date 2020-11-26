@@ -1,13 +1,29 @@
 from gpiozero import *
 import time
+import board
+import adafruit_dht
+#pip3 install adafruit-circuitpython-dht
+
 from twilio.rest import Client
 
 from signal import pause
 
+
+def SafeDht(gpio_pin):
+    dht_device = adafruit_dht.DHT22(gpio_pin,use_pulseio=False)
+    try:
+        temperature = dht_device.temperature
+        humidity = dht_device.humidity
+        return temperature, humidity
+    except RuntimeError as error:
+        return SafeDht()
+
 #import RPi.GPIO as GPIO
 #GPIO.setmode(GPIO.BCM) # GPIO Numbers instead of board numbers
+sensor_pin = board.D18
 relay = OutputDevice(20)
 relay2 = OutputDevice(21)
+
 relay.off()
 relay2.off()
 
@@ -28,17 +44,20 @@ mybool=False
 
 while True:
     print("loop start")
-    for message in client.messages.list():
+    x = '''for i in client.messages.list():
         t = time.localtime()
         ct = time.strftime("%H:%M:%S" , t)
         print("attempt ",count,ct)
-        print(message.from_)
+        print(i.from_)
         #message = client.messages.create(
         #                          from_='+12183664277',
         #                          body='sensor tripped'+str(count)+' at '+ct,
         #                          to='+15305037021'
         #                      )
-    time.sleep(10)
+    time.sleep(10)'''#string comment to disable checking messages
+    temperature, humidity =SafeDht(sensor_pin)
+    print(humidity," : ",temperature)
+    time.sleep(5)
 
     #print(message.sid)
     if mybool:
