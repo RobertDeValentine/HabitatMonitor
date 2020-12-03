@@ -28,8 +28,8 @@ def SafeDht(gpio_pin):
 #Note this is basic on off code for relay
 #Do not exceed 10 amps @ 120V per relay if using our parts guide!
 sensor_pin = board.D18#pin for the humidity and temp sensor 
-relay = OutputDevice(20)#relay for switch connected to gpio 20
-relay2 = OutputDevice(21)#relay for switch connected to gpio 21
+relay = OutputDevice(20)#relay for switch connected to gpio 20 aka relay ch 2
+relay2 = OutputDevice(21)#relay for switch connected to gpio 21 aka relay ch 3
 #safety check switch relay devices to default off position with switch off for both outlets to go off.
 relay.off()
 relay2.off()
