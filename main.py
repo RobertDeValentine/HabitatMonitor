@@ -3,15 +3,15 @@
 #pip3 install board
 #pip3 install gpiozero
 #pip3 install twilio
-from gpiozero import *
+from gpiozero import TwilioAccount
 import time
 import board
 import adafruit_dht
 
 
 from twilio.rest import Client
-
 from signal import pause
+from header import *
 
 #dht sensors are unreliable and thus this function is needed
 #uses try except and recursion to sweep under the rug errors
@@ -39,8 +39,8 @@ relay2.off()
 
 # Your Account Sid and Auth Token from twilio.com/console
 # DANGER! This is insecure. See http://twil.io/secure
-account_sid = 'AC4718a993b32ee4a3da3a5f4b0ad8856d'
-auth_token = '43ef9aff6f02fd33c750146a7de19029'
+account_sid = TwilioAccount.account_sid
+auth_token = TwilioAccount.account_sid
 client = Client(account_sid, auth_token)
 
 
