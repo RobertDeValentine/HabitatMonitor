@@ -3,13 +3,13 @@
 #pip3 install board
 #pip3 install gpiozero
 #pip3 install twilio
-from gpiozero import TwilioAccount
+from gpiozero import *
 import time
 import board
 #pip3 install board
 import adafruit_dht
-
-
+from your_header.py import YourTwilioAccount
+from header.py import TwilioAccount
 from twilio.rest import Client
 from signal import pause
 from header import *
@@ -41,7 +41,7 @@ relay2.off()
 # Your Account Sid and Auth Token from twilio.com/console
 # DANGER! This is insecure. See http://twil.io/secure
 account_sid = TwilioAccount.account_sid
-auth_token = TwilioAccount.account_sidcd in
+auth_token = TwilioAccount.auth_token
 client = Client(account_sid, auth_token)
 
 
