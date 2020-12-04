@@ -40,7 +40,7 @@ relay2.off()
 # Your Account Sid and Auth Token from twilio.com/console
 # DANGER! This is insecure. See http://twil.io/secure
 account_sid = TwilioAccount.account_sid
-auth_token = TwilioAccount.account_sid
+auth_token = TwilioAccount.account_sidcd in
 client = Client(account_sid, auth_token)
 
 
