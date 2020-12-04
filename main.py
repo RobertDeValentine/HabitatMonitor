@@ -8,11 +8,11 @@ import time
 import board
 #pip3 install board
 import adafruit_dht
-from your_header.py import YourTwilioAccount
-from header.py import TwilioAccount
+from your_header import YourTwilioAccount
 from twilio.rest import Client
 from signal import pause
 from header import *
+
 
 #dht sensors are unreliable and thus this function is needed
 #uses try except and recursion to sweep under the rug errors
@@ -24,16 +24,28 @@ def SafeDht(gpio_pin):
         humidity = dht_device.humidity
         return temperature, humidity
     except RuntimeError as error:
-        return SafeDht()
+        return SafeDht(gpio_pin)
 
-#Note this is basic on off code for relay
-#Do not exceed 10 amps @ 120V per relay if using our parts guide!
-sensor_pin = board.D18#pin for the humidity and temp sensor 
-relay = OutputDevice(20)#relay for switch connected to gpio 20 aka relay ch 2
-relay2 = OutputDevice(21)#relay for switch connected to gpio 21 aka relay ch 3
-#safety check switch relay devices to default off position with switch off for both outlets to go off.
-relay.off()
-relay2.off()
+def reply(i,bod):#use this function to reply to message i with string bod as text message
+    message = client.messages.create(
+        from_=TwilioAccount.phone_number,
+        body=bod,
+        to=i.from_
+         )
+    safe_del(message)
+def safe_del(i):#call this function to safely delete a message it takes whole messages
+    mes =client.messages(i.sid).fetch()
+    
+    while(not(mes.status =="delivered") and not(mes.status =="received")):
+        mes =client.messages(i.sid).fetch()
+        print(mes.status)
+        time.sleep(.001)
+    client.messages(i.sid).delete()
+def parse_in(i,s):#checks if s is in body of i
+    if(s in i.body):
+        return True
+    else:
+        return False
 
 
 
@@ -44,34 +56,61 @@ account_sid = TwilioAccount.account_sid
 auth_token = TwilioAccount.auth_token
 client = Client(account_sid, auth_token)
 
+#Note this is basic on off code for relay
+#Do not exceed 10 amps @ 120V per relay if using our parts guide!
+sensor_pin = board.D18#pin for the humidity and temp sensor
+relay = OutputDevice(20)#relay for switch connected to gpio 20 aka relay ch 2
+relay2 = OutputDevice(21)#relay for switch connected to gpio 21 aka relay ch 3
+ldr = LightSensor(23)#light sensor on gpio 23
+#safety check switch relay devices to default off position with switch off for both outlets to go off.
+relay.off()
+relay2.off()
+
+
+
+
+
+
 
 
 #debug variables
 count=0
 mybool=False
 
+
+
 while True:
     print("loop start")#debug
-    x = '''for i in client.messages.list():
-        t = time.localtime()
-        ct = time.strftime("%H:%M:%S" , t)
-        print("attempt ",count,ct)
-        print(i.from_)
-        #message = client.messages.create(
-        #                          from_='+12183664277',
-        #                          body='sensor tripped'+str(count)+' at '+ct,
-        #                          to='+15305037021'
-        #                      )
-    time.sleep(10)'''#string comment to disable checking messages
-    temperature, humidity =SafeDht(sensor_pin)#call function to get temp and hum
-    print(humidity," : ",temperature)
-    time.sleep(5)#wait 5 seconds #debug
-
-    #print(message.sid)
-    if mybool:#debug
-        relay.on()
-        relay2.on()
+    for i in client.messages.list():
+        if(i.direction=="inbound"):
+            #this is where your commands go
+            #message is deleted at end of if statement
+            print("inbound")
+            if (i.body.lower()=="is light"):
+                if(not(ldr.light_detected)):
+                    reply(i,"it's light out!")
+                else:
+                    reply(i,"darkness is here.")
+                #print("light done")
+            elif(i.body.lower()=="temperature"):
+                temperature, humidity =SafeDht(sensor_pin)#call function to get temp and hum
+                reply(i,"the temperature is: "+str(temperature)+"farenheight")
+            elif(i.body.lower()=="humidity"):
+                temperature, humidity =SafeDht(sensor_pin)#call function to get temp and hum
+                reply(i,"the humidity is: "+str(humidity))
+            else:
+                reply(i,"bad command please type 'help' for list of commands")
+            safe_del(i)
+            #client.messages(i.sid).delete()
+        else:
+            print(i.sid)
+            safe_del(i)
+        time.sleep(2)
+        #client.messages(i.sid).delete()
+    
     print("loop end")#debug
+    time.sleep(.5)#keeping loop to once per .5 second to reduce power?
+    
 
 
 
@@ -80,3 +119,20 @@ while True:
 #find way to secure account sid and token using git ignore and separate file?
 #demo environment for presentation.
 #parse messages for correct one and commands have proper responses and error messages for wrong commands.
+x='''
+        if( i.body.lower() =="echo"):
+            wow="wow"
+            reply(i,"echooooooo")
+            client.messages(i.sid).delete()
+            
+            #client.messages(i.sid).delete()
+        
+    
+    temperature, humidity =SafeDht(sensor_pin)#call function to get temp and hum
+    print(humidity," : ",temperature)
+    time.sleep(5)#wait 5 seconds #debug
+
+    #print(message.sid)
+    if mybool:#debug
+        relay.on()
+        relay2.on()'''
