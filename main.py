@@ -1,6 +1,7 @@
 from gpiozero import *
 import time
 import board
+#pip3 install board
 import adafruit_dht
 #pip3 install adafruit-circuitpython-dht
 
