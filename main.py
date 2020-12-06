@@ -114,7 +114,7 @@ while True:
             #OUTLET 2 SWITCHING
             elif(i.body.lower() == "switch 2 off"):
                 if(relay2.value == 1):
-                    rela2.off()
+                    relay2.off()
                     reply(i,"Outlet 2 switched off")
                 else:
                     reply(i,"Outlet 2 is already off")
@@ -124,6 +124,8 @@ while True:
                     reply(i,"Outlet 1 switched on")
                 else:
                     reply(i,"Outlet 1 is already on")
+            elif(i.body.lower() == "help"):
+                reply(i,"Here are the following commands:\n'is light': returns status of the light\n'temperature': returns the temperature\n'humidity': returns the humidity\n'switch {1,2} {on,off}': Switches the outlet to the desired setting\n 'Status': returns status")
             else:
                 reply(i,"bad command please type 'help' for list of commands")
             safe_del(i)
