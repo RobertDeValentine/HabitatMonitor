@@ -35,7 +35,7 @@ def reply(i,bod):#use this function to reply to message i with string bod as tex
     safe_del(message)
 def safe_del(i):#call this function to safely delete a message it takes whole messages
     mes =client.messages(i.sid).fetch()
-    
+
     while(not(mes.status =="delivered") and not(mes.status =="received")):
         mes =client.messages(i.sid).fetch()
         print(mes.status)
@@ -98,6 +98,34 @@ while True:
             elif(i.body.lower()=="humidity"):
                 temperature, humidity =SafeDht(sensor_pin)#call function to get temp and hum
                 reply(i,"the humidity is: "+str(humidity))
+            #OUTLET SWITCHING
+            elif(i.body.lower() == "switch 1 off"):
+                if(relay.value == 1):
+                    relay.off()
+                    reply(i,"Outlet 1 switched off")
+                else:
+                    reply(i,"Outlet 1 is already off")
+            elif(i.body.lower() == "switch 1 on"):
+                if(relay.value == 0):
+                    relay.on()
+                    reply(i,"Outlet 1 switched on")
+                else:
+                    reply(i,"Outlet 1 is already on")
+            #OUTLET 2 SWITCHING
+            elif(i.body.lower() == "switch 2 off"):
+                if(relay2.value == 1):
+                    relay2.off()
+                    reply(i,"Outlet 2 switched off")
+                else:
+                    reply(i,"Outlet 2 is already off")
+            elif(i.body.lower() == "switch 2 on"):
+                if(relay.value == 0):
+                    relay.on()
+                    reply(i,"Outlet 1 switched on")
+                else:
+                    reply(i,"Outlet 1 is already on")
+            elif(i.body.lower() == "help"):
+                reply(i,"Here are the following commands:\n'is light': returns status of the light\n'temperature': returns the temperature\n'humidity': returns the humidity\n'switch {1,2} {on,off}': Switches the outlet to the desired setting\n 'Status': returns status")
             else:
                 reply(i,"bad command please type 'help' for list of commands")
             safe_del(i)
@@ -107,10 +135,10 @@ while True:
             safe_del(i)
         time.sleep(2)
         #client.messages(i.sid).delete()
-    
+
     print("loop end")#debug
     time.sleep(.5)#keeping loop to once per .5 second to reduce power?
-    
+
 
 
 
@@ -124,10 +152,10 @@ x='''
             wow="wow"
             reply(i,"echooooooo")
             client.messages(i.sid).delete()
-            
+
             #client.messages(i.sid).delete()
-        
-    
+
+
     temperature, humidity =SafeDht(sensor_pin)#call function to get temp and hum
     print(humidity," : ",temperature)
     time.sleep(5)#wait 5 seconds #debug
