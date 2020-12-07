@@ -177,6 +177,23 @@ while True:
                     reply(i,"Outlet 2 is already on")
             elif(command == "help"):
                 reply(i,"Here are the following commands:\n'is light': returns status of the light\n'temperature': returns the temperature\n'humidity': returns the humidity\n'switch {1,2} {on,off}': Switches the outlet to the desired setting\n 'Status': returns status")
+            elif(command == "status"):
+                stat = ""
+                temperature, humidity =SafeDht(sensor_pin)
+                stat = stat + "The temperature is: "+str(temperature)+" Celsius\nThe humidity is: " +str(humidity)+"\n"
+                if(not(ldr.light_detected)):
+                    stat = stat+"Currently it's light out!\n"
+                else:
+                    stat = stat +"Praise the light! It's on.\n"
+                if(relay.value == 1):
+                    stat = stat + "Outlet 1 is currently on.\n"
+                else:
+                    stat = stat + "Outlet 1 is currently off.\n"
+                if(relay2.value == 1):
+                    stat = stat + "Outlet 2 is currently on.\n"
+                else:
+                    stat = stat + "Outlet 2 is currently off.\n"
+                reply(i,stat)
             else:
                 reply(i,"bad command: '"+command+"'  please type 'help' for list of commands")
             safe_del(i)
