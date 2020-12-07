@@ -5,13 +5,16 @@
 #pip3 install twilio
 from gpiozero import *
 import time
+import csv
+import sys
 import board
-#pip3 install board
 import adafruit_dht
 from your_header import YourTwilioAccount
 from twilio.rest import Client
 from signal import pause
 from header import *
+from datetime import datetime
+from datetime import timedelta
 
 
 #dht sensors are unreliable and thus this function is needed
@@ -25,6 +28,19 @@ def SafeDht(gpio_pin):
         return temperature, humidity
     except RuntimeError as error:
         return SafeDht(gpio_pin)
+#writes array ti file with each element as line
+def toFile(fname,mylist):
+    with open(fname, 'w') as f:
+        for item in mylist:
+            f.writelines(item)
+            f.writelines('\n')
+#reads to list with each line as single element
+def readtol(name):
+    lines = list()
+    with open(name) as f:
+        for i in f:
+            lines.append(i)
+    return lines
 
 def reply(i,bod):#use this function to reply to message i with string bod as text message
     message = client.messages.create(
@@ -32,22 +48,31 @@ def reply(i,bod):#use this function to reply to message i with string bod as tex
         body=bod,
         to=i.from_
          )
-    safe_del(message)
+    time.sleep(1)#to no reply too quickly and violate trial liscense comment out at own risk
+    #print("replied to ",i.from_)#debug
 def safe_del(i):#call this function to safely delete a message it takes whole messages
+    time.sleep(.1)
     mes =client.messages(i.sid).fetch()
-
-    while(not(mes.status =="delivered") and not(mes.status =="received")):
-        mes =client.messages(i.sid).fetch()
-        print(mes.status)
-        time.sleep(.001)
-    client.messages(i.sid).delete()
+    if (mes.direction=="inbound" and mes.price is None):
+        #print("choice 1")#debug
+        bad_sid.add(i.sid)
+        return
+    elif (mes.sid in bad_sid):
+        #print("choice 2")#debug
+        bad_sid.remove(mes.sid)
+    elif (mes.price is None):
+        #print("choice 3")#debug
+        return
+    #print(mes.status,mes.price, "before deletion")#debug
+    #print(i.body)#debug
+    client.messages(mes.sid).delete()
 def parse_in(i,s):#checks if s is in body of i
     if(s in i.body):
         return True
     else:
         return False
 
-
+    
 
 
 # Your Account Sid and Auth Token from twilio.com/console
@@ -55,6 +80,8 @@ def parse_in(i,s):#checks if s is in body of i
 account_sid = TwilioAccount.account_sid
 auth_token = TwilioAccount.auth_token
 client = Client(account_sid, auth_token)
+
+bad_sid = set()#blacklist of sid
 
 #Note this is basic on off code for relay
 #Do not exceed 10 amps @ 120V per relay if using our parts guide!
@@ -66,78 +93,99 @@ ldr = LightSensor(23)#light sensor on gpio 23
 relay.off()
 relay2.off()
 
-
-
-
-
+bad_sid = set(readtol("bl.txt"))
+temp_sid = bad_sid
+#clean up old messages 
+for i in temp_sid:
+    #print(i, "deletion attempt")#debug
+    safe_del(client.messages(i).fetch())
+for i in client.messages.list(from_=TwilioAccount.phone_number):
+    #print(i, "deletion attempt")#debug
+    safe_del(i)
 
 
 
 #debug variables
 count=0
 mybool=False
-
-
+ss1 = datetime.now()+timedelta(seconds=5)
+ss2 = datetime.now()+timedelta(seconds=5)
 
 while True:
-    print("loop start")#debug
-    for i in client.messages.list():
-        if(i.direction=="inbound"):
+    #print("loop start: ", count)#debug
+    for i in client.messages.list(to=TwilioAccount.phone_number,date_sent_after=(datetime.now())):
+        if(i.direction=="inbound" and (i.sid not in bad_sid)):
             #this is where your commands go
             #message is deleted at end of if statement
             print("inbound")
-            if (i.body.lower()=="is light"):
+            print(i.body,"inbound 1")
+            command = (i.body.lower()).strip()
+            print(command,"inbound 2")
+            if (command=="is light"):
                 if(not(ldr.light_detected)):
-                    reply(i,"it's light out!")
+                    reply(i,"It's light out!")
                 else:
-                    reply(i,"darkness is here.")
+                    reply(i,"Darkness is here.")
                 #print("light done")
-            elif(i.body.lower()=="temperature"):
+            elif(command=="temperature"):
                 temperature, humidity =SafeDht(sensor_pin)#call function to get temp and hum
-                reply(i,"the temperature is: "+str(temperature)+"farenheight")
-            elif(i.body.lower()=="humidity"):
+                reply(i,"The temperature is: "+str(temperature)+" Celsius")
+            elif(command=="humidity"):
                 temperature, humidity =SafeDht(sensor_pin)#call function to get temp and hum
-                reply(i,"the humidity is: "+str(humidity))
+                reply(i,"The humidity is: "+str(humidity))
             #OUTLET SWITCHING
-            elif(i.body.lower() == "switch 1 off"):
-                if(relay.value == 1):
-                    relay.off()
-                    reply(i,"Outlet 1 switched off")
+            elif(command == "switch 1 off"):
+                if(relay.value == 1 ):
+                    if(datetime.now()>ss1):
+                        relay.off()
+                        ss1 = datetime.now()+timedelta(seconds=5)
+                        reply(i,"Outlet 1 switched off")
+                    else:
+                        reply(i,"Outlet 1 not switched off. 5 second cooldown not met.")
                 else:
                     reply(i,"Outlet 1 is already off")
-            elif(i.body.lower() == "switch 1 on"):
-                if(relay.value == 0):
-                    relay.on()
-                    reply(i,"Outlet 1 switched on")
+            elif(command == "switch 1 on"):
+                if(relay.value == 0 ):
+                    if(datetime.now()>ss1):
+                        relay.on()
+                        ss1 = datetime.now()+timedelta(seconds=5)
+                        reply(i,"Outlet 1 switched on")
+                    else:
+                        reply(i,"Outlet 1 not switched on. 5 second cooldown not met.")
                 else:
                     reply(i,"Outlet 1 is already on")
             #OUTLET 2 SWITCHING
-            elif(i.body.lower() == "switch 2 off"):
+            elif(command == "switch 2 off"):
                 if(relay2.value == 1):
-                    relay2.off()
-                    reply(i,"Outlet 2 switched off")
+                    if(datetime.now()>ss2):
+                        relay2.off()
+                        ss2 = datetime.now()+timedelta(seconds=5)
+                        reply(i,"Outlet 2 switched off")
+                    else:
+                        reply(i,"Outlet 2 not switched off. 5 second cooldown not met.")
                 else:
                     reply(i,"Outlet 2 is already off")
-            elif(i.body.lower() == "switch 2 on"):
-                if(relay.value == 0):
-                    relay.on()
-                    reply(i,"Outlet 1 switched on")
+            elif(command == "switch 2 on"):
+                if(relay2.value == 0):
+                    if(datetime.now()>ss2):
+                        relay2.on()
+                        ss1 = datetime.now()+timedelta(seconds=5)
+                        reply(i,"Outlet 2 switched on")
+                    else:
+                        reply(i,"Outlet 2 not switched on. 5 second cooldown not met.")
                 else:
-                    reply(i,"Outlet 1 is already on")
-            elif(i.body.lower() == "help"):
+                    reply(i,"Outlet 2 is already on")
+            elif(command == "help"):
                 reply(i,"Here are the following commands:\n'is light': returns status of the light\n'temperature': returns the temperature\n'humidity': returns the humidity\n'switch {1,2} {on,off}': Switches the outlet to the desired setting\n 'Status': returns status")
             else:
-                reply(i,"bad command please type 'help' for list of commands")
+                reply(i,"bad command: '"+command+"'  please type 'help' for list of commands")
             safe_del(i)
-            #client.messages(i.sid).delete()
-        else:
-            print(i.sid)
-            safe_del(i)
-        time.sleep(2)
-        #client.messages(i.sid).delete()
 
-    print("loop end")#debug
-    time.sleep(.5)#keeping loop to once per .5 second to reduce power?
+    #print("loop end: ",count)#debug
+    toFile("bl.txt",list(bad_sid))#backup current bad sid in case of power loss
+    time.sleep(1)#keeping loop to once per 1 second to reduce power?
+    #print(bad_sid)#debug
+    count= count+1
 
 
 
@@ -147,20 +195,3 @@ while True:
 #find way to secure account sid and token using git ignore and separate file?
 #demo environment for presentation.
 #parse messages for correct one and commands have proper responses and error messages for wrong commands.
-x='''
-        if( i.body.lower() =="echo"):
-            wow="wow"
-            reply(i,"echooooooo")
-            client.messages(i.sid).delete()
-
-            #client.messages(i.sid).delete()
-
-
-    temperature, humidity =SafeDht(sensor_pin)#call function to get temp and hum
-    print(humidity," : ",temperature)
-    time.sleep(5)#wait 5 seconds #debug
-
-    #print(message.sid)
-    if mybool:#debug
-        relay.on()
-        relay2.on()'''
